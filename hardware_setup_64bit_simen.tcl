@@ -49,6 +49,11 @@ startgroup
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_timer:2.0 axi_timer_0
 endgroup
 
+#axi_timer configuring cascade 64bit mode
+startgroup
+set_property -dict [list CONFIG.mode_64bit {1}] [get_bd_cells axi_timer_0]
+endgroup
+
 #Run block automation
 apply_bd_automation -rule xilinx.com:bd_rule:processing_system7 -config {make_external "FIXED_IO, DDR" apply_board_preset "1" Master "Disable" Slave "Disable" }  [get_bd_cells processing_system7_0]
 
