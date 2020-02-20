@@ -73,11 +73,17 @@ add_files -norecurse /home/hypso/Documents/vivado/ZedBoard_proto/ZedBoard_proto.
 #Run Synthesis
 launch_runs synth_1 -jobs 8
 
+#Wait while synth is running
+wait_on_run synth_1
+
 #Run Implementation
 #launch_runs impl_1 -jobs 8
 
 #Generate Bitstream
 launch_runs impl_1 -to_step write_bitstream -jobs 8
+
+#Wait while generating bitstream
+wait_on_run impl_1
 
 #Export Hardware to local
 file mkdir /home/hypso/Documents/vivado/ZedBoard_proto/ZedBoard_proto.sdk
