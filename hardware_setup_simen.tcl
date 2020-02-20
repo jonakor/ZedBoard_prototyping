@@ -11,7 +11,7 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
    return 1
 }
 
-set projectDir /home/hypso/Documents/vivado
+set projectDir C:/Users/Simen/Documents/Progging/Vivado/ZedBoard_prototyping
 
 #Setting the name of the project
 set projectName ZedBoard_proto
