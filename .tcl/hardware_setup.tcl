@@ -20,7 +20,6 @@ set projectName ZedBoard_proto
 # Creating the project and specifying the part (xc7z020clg484-1)
 #*****************************************************************************************
 create_project $projectName $projectDir/$projectName -part xc7z020clg484-1 -force
-#create_project ZedBoard_proto /home/hypso/Documents/vivado/ZedBoard_proto -part xc7z020clg484-1 -force
 
 
 #*****************************************************************************************
