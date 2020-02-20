@@ -5,6 +5,7 @@ To set up the system:
  - Start up Vivado
  - Press "tools"->"Run TCL script"
  - Select the .tcl file in this gitrepo.
+ - PS: If you're using windows, remember to change the path in #projectDir by editing the .tcl file
 
 When SDK has launched:
  - Click "new" -> "Application project"
