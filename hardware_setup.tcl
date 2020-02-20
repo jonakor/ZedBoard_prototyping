@@ -19,8 +19,8 @@ set projectName ZedBoard_proto
 #*****************************************************************************************
 # Creating the project and specifying the part (xc7z020clg484-1)
 #*****************************************************************************************
-create_project $projectName $projectDir/$projectName -part xc7z020clg484-1 -force
-#create_project ZedBoard_proto /home/hypso/Documents/vivado/ZedBoard_proto -part xc7z020clg484-1 -force
+#create_project $projectName $projectDir/$projectName -part xc7z020clg484-1 -force
+create_project ZedBoard_proto /home/hypso/Documents/vivado/ZedBoard_proto -part xc7z020clg484-1 -force
 
 
 #*****************************************************************************************
@@ -67,8 +67,8 @@ update_compile_order -fileset sources_1
 #*****************************************************************************************
 
 #Create HDL Wrapper
-make_wrapper -files [get_files $projectDir/$projectName/Zedboard_proto.srcs/sources_1/bd/ZedBoard_proto/ZedBoard_proto.bd] -top
-add_files -norecurse $projectDir/$projectName/ZedBoard_proto.srcs/sources_1/bd/ZedBoard_proto/hdl/ZedBoard_proto_wrapper.vhd
+make_wrapper -files [get_files /home/hypso/Documents/vivado/Zedboard_proto/Zedboard_proto.srcs/sources_1/bd/ZedBoard_proto/ZedBoard_proto.bd] -top
+add_files -norecurse /home/hypso/Documents/vivado/ZedBoard_proto/ZedBoard_proto.srcs/sources_1/bd/ZedBoard_proto/hdl/ZedBoard_proto_wrapper.vhd
 
 #Run Synthesis
 launch_runs synth_1 -jobs 8
@@ -86,10 +86,10 @@ launch_runs impl_1 -to_step write_bitstream -jobs 8
 wait_on_run impl_1
 
 #Export Hardware to local
-file mkdir $projectDir/$projectName/ZedBoard_proto.sdk
-file copy -force $projectDir/$projectName/ZedBoard_proto.runs/impl_1/ZedBoard_proto_wrapper.sysdef $projectDir/$projectName/ZedBoard_proto.sdk/ZedBoard_proto_wrapper.hdf
+file mkdir /home/hypso/Documents/vivado/ZedBoard_proto/ZedBoard_proto.sdk
+file copy -force /home/hypso/Documents/vivado/ZedBoard_proto/ZedBoard_proto.runs/impl_1/ZedBoard_proto_wrapper.sysdef /home/hypso/Documents/vivado/ZedBoard_proto/ZedBoard_proto.sdk/ZedBoard_proto_wrapper.hdf
 
 #*****************************************************************************************
 # Launch SDK
 #*****************************************************************************************
-launch_sdk -workspace $projectDir/$projectName/ZedBoard_proto.sdk -hwspec $projectDir/$projectName/ZedBoard_proto.sdk/ZedBoard_proto_wrapper.hdf
+launch_sdk -workspace /home/hypso/Documents/vivado/ZedBoard_proto/ZedBoard_proto.sdk -hwspec /home/hypso/Documents/vivado/ZedBoard_proto/ZedBoard_proto.sdk/ZedBoard_proto_wrapper.hdf
