@@ -1,5 +1,6 @@
-# ZedBoard_prototyping
-Hardware .tcl code and software .c code for ZedBoard prototyping
+# ZedBoard Prototyping
+Hardware .tcl code and software .c code for ZedBoard prototyping.
+Using General Purpose Input/Output (GPIO) with interrupt to start and stop timer.
 
 To set up the system:
  - Start up Vivado
