@@ -1,6 +1,6 @@
 # ZedBoard Prototyping
 Hardware .tcl code and software .c code for ZedBoard prototyping.
-Using General Purpose Input/Output (GPIO) with interrupt to start and stop timer.
+Using PS General Purpose Input/Output (GPIO) with interrupt to start and stop 64-bit AXI timer.
 
 To set up the system:
  - Start up Vivado
