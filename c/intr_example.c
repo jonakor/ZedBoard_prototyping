@@ -15,7 +15,7 @@
 #include "xplatform_info.h"
 
 
-#define BPS_SIGNAL_PIN 50  //BPS signal pin. Puls per second
+#define PPS_SIGNAL_PIN 50  //PPS signal pin. Puls per second
 #define FLASH_SIGNAL_PIN 51  //Flash signal pin.
 #define LED_PIN 7 // Processing system LED pin
 
@@ -49,7 +49,7 @@ int main(void) {
   }
 
   // Define data direction, inputs with 0
-	XGpioPs_SetDirectionPin(&Gpio, BPS_SIGNAL_PIN, 0x0);
+	XGpioPs_SetDirectionPin(&Gpio, PPS_SIGNAL_PIN, 0x0);
 	XGpioPs_SetDirectionPin(&Gpio, FLASH_SIGNAL_PIN, 0x0);
 
 	// 	Define data direction, output with 1
@@ -76,14 +76,14 @@ int main(void) {
   XGpioPs_IntrClear(&Gpio, 2, 0x0);
   XGpioPs_IntrClear(&Gpio, 3, 0x0);
 
-  /* Enable the GPIO interrupts on BPS and Flash signal pin */
-  XGpioPs_IntrEnablePin(&Gpio, BPS_SIGNAL_PIN);
+  /* Enable the GPIO interrupts on PPS and Flash signal pin */
+  XGpioPs_IntrEnablePin(&Gpio, PPS_SIGNAL_PIN);
   XGpioPs_IntrEnablePin(&Gpio, FLASH_SIGNAL_PIN);
-  /* Enable falling edge interrupts for BPS and Flash signal pin*/
-  XGpioPs_SetIntrTypePin(&Gpio, BPS_SIGNAL_PIN, INTR_TYPE);
+  /* Enable falling edge interrupts for PPS and Flash signal pin*/
+  XGpioPs_SetIntrTypePin(&Gpio, PPS_SIGNAL_PIN, INTR_TYPE);
   XGpioPs_SetIntrTypePin(&Gpio, FLASH_SIGNAL_PIN, INTR_TYPE);
 
-  XGpioPs_IntrClearPin(&Gpio, BPS_SIGNAL_PIN); //possible fix to interrupt issue
+  XGpioPs_IntrClearPin(&Gpio, PPS_SIGNAL_PIN); //possible fix to interrupt issue
   XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
   XScuGic_Enable(&my_Gic, GPIO_INTERRUPT_ID);
 
@@ -106,24 +106,24 @@ int main(void) {
 
 static void my_intr_handler(void *CallBackRef){  //function called when interrupt occurs.
 
-  bool bpsSignal;
+  bool ppsSignal;
   bool flashSignal;
-  static bool prevBpsSignal = 0;
+  static bool prevPpsSignal = 0;
   static bool prevFlashSignal = 0;
 
   static u8 count = 0;
 
-  //BPS signal
-  bpsSignal 	= XGpioPs_ReadPin(&Gpio, BPS_SIGNAL_PIN); //read BPS signal to verify state
-  if (bpsSignal != prevBpsSignal) {
-    if (bpsSignal == 1){
+  //PPS signal
+  ppsSignal 	= XGpioPs_ReadPin(&Gpio, PPS_SIGNAL_PIN); //read PPS signal to verify state
+  if (ppsSignal != prevPpsSignal) {
+    if (ppsSignal == 1){
       count ++;
-      xil_printf("Rising edge of BPS! BPS-count: %i\r\n", count);
-      XGpioPs_IntrClearPin(&Gpio, BPS_SIGNAL_PIN);
+      xil_printf("Rising edge of PPS! PPS-count: %i\r\n", count);
+      XGpioPs_IntrClearPin(&Gpio, PPS_SIGNAL_PIN);
     }
-    else if (bpsSignal == 0) {
-      xil_printf("Falling edge of BPS!\r\n");
-      XGpioPs_IntrClearPin(&Gpio, BPS_SIGNAL_PIN);
+    else if (ppsSignal == 0) {
+      xil_printf("Falling edge of PPS!\r\n");
+      XGpioPs_IntrClearPin(&Gpio, PPS_SIGNAL_PIN);
     }
   }
 
@@ -141,8 +141,8 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
     }
   }
 
-  prevBpsSignal = bpsSignal;
+  prevPpsSignal = ppsSignal;
   prevFlashSignal = flashSignal;
-  XGpioPs_WritePin(&Gpio, LED_PIN, bpsSignal); // will be handy when interrupt triggers on both edges. led will blink according to BPS-signal
+  XGpioPs_WritePin(&Gpio, LED_PIN, ppsSignal); // will be handy when interrupt triggers on both edges. led will blink according to PPS-signal
 
 }
