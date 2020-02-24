@@ -111,15 +111,14 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
   static bool prevBpsSignal = 0;
   static bool prevFlashSignal = 0;
 
-  bpsSignal 	= XGpioPs_ReadPin(&Gpio, BPS_SIGNAL_PIN); //read BPS signal to verify state
-  flashSignal = XGpioPs_ReadPin(&Gpio, FLASH_SIGNAL_PIN); //read Flash signal to verify state
-
-  XGpioPs_WritePin(&Gpio, LED_PIN, bpsSignal); // will be handy when interrupt triggers on both edges. led will blink according to BPS-signal
+  static u8 count = 0;
 
   //BPS signal
+  bpsSignal 	= XGpioPs_ReadPin(&Gpio, BPS_SIGNAL_PIN); //read BPS signal to verify state
   if (bpsSignal != prevBpsSignal) {
     if (bpsSignal == 1){
-      xil_printf("Rising edge of BPS!\r\n");
+      count ++;
+      xil_printf("Rising edge of BPS! BPS-count: %i\r\n", count);
       XGpioPs_IntrClearPin(&Gpio, BPS_SIGNAL_PIN);
     }
     else if (bpsSignal == 0) {
@@ -128,10 +127,8 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
     }
   }
 
-
-
-
   //Flash signal
+  flashSignal = XGpioPs_ReadPin(&Gpio, FLASH_SIGNAL_PIN); //read Flash signal to verify state
   if (flashSignal != prevFlashSignal) {
     if (flashSignal == 1){
       xil_printf("Rising edge of Flash!\r\n");
@@ -146,5 +143,6 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
 
   prevBpsSignal = bpsSignal;
   prevFlashSignal = flashSignal;
+  XGpioPs_WritePin(&Gpio, LED_PIN, bpsSignal); // will be handy when interrupt triggers on both edges. led will blink according to BPS-signal
 
 }
