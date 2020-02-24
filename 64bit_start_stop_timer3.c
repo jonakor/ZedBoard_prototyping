@@ -55,21 +55,24 @@ int main(void) {
   bool stop;
 
   // Timer variables
-  u32 ControlStatus;
   u32 ticks_MS = 0;
   u32 ticks_LS = 0;
+  u32 ControlStatus;
+
+  long long ticks_start;
+  long long ticks_end;
 
   double time_between;
-  bool printstop = false;
+  bool printstop = true;
 
   // Clearing the Control Status register.
   // The Control Status register contains a 32 bit that enables different settings.
-  // Cascade mode is bit 11. 
+  // Cascade mode is bit 11.
   //31-12 is reserved.
 
 
   // ----------------  Set timer settings --------
-	XTmrCtr_SetControlStatusReg(TmrCtrBaseAddress, TmrCtrNumber,0x0); // clear control status reg
+  XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0,0x0); // clear control status reg
   XTmrCtr_WriteReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0, XTC_TCSR_OFFSET, XTC_CSR_CASC_MASK); // set cascade mode
   //XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0, XTC_CSR_CASC_MASK);   // these two actually does the same
 
@@ -82,59 +85,73 @@ int main(void) {
   xil_printf("Control status register: %d\n", control_value);
 
 
-
   // Writing 880 in hex will enable cascade and timer.
   // writing 800 in hex will disable timer, but keep cascade mode.
 
-  
-
   while(1) {
-  
-      start = XGpioPs_ReadPin(&Gpio,startButton);
-      stop = XGpioPs_ReadPin(&Gpio,stopButton);
 
-      if(start) {
-        // ---------- Counter reset ----------------------
-        XTmrCtr_SetLoadReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0, 0);   // Set the value in load register 1
-        XTmrCtr_LoadTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // load the reg 1 value onto counter reg 1
+	start = XGpioPs_ReadPin(&Gpio,startButton);
+	stop = XGpioPs_ReadPin(&Gpio,stopButton);
 
-        XTmrCtr_SetLoadReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1, 0); // Set the value in load reg 2
-        XTmrCtr_LoadTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1); // load the reg 2 value onto counter reg 2
-        // ---------------------------------------------------
+	//printf("not cero please: %lu\n", number);
 
-        ticks_LS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
-        ticks_MS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
+    if(start && printstop == true) {
 
-        long long ticks_start = (long long) ticks_MS << 32 | ticks_LS;
+		ticks_LS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
+		ticks_MS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
 
-        XTmrCtr_Enable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // start the timer
-        xil_printf("Timer started\r\n");
+		ticks_start = (long long) ticks_MS << 32 | ticks_LS;
+		XTmrCtr_SetLoadReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0, 0x0);   // Set the value in load register 1
+		XTmrCtr_LoadTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // load the reg 1 value onto counter reg 1
 
-        printf("Test!! Ticks_LS: %d,   Ticks_MS: %d\r\n",ticks_LS, ticks_MS);
+		XTmrCtr_SetLoadReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1, 0x0); // Set the value in load reg 2
+		XTmrCtr_LoadTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);
+		xil_printf("Timer started\r\n");
 
-        XGpioPs_WritePin(&Gpio, ledpin, 1);
-        printstop = false;
-      }
+		ControlStatus = XTmrCtr_GetControlStatusReg(TMRCTR_BASEADDR_0,TIMER_COUNTER_0);
+		XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0,ControlStatus & (~XTC_CSR_LOAD_MASK));
+		XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1,ControlStatus & (~XTC_CSR_LOAD_MASK));
 
-      if(stop) {
-        XTmrCtr_Disable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);
-        
-        xil_printf("Timer stopped\r\n");
 
-        ticks_LS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
-        ticks_MS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
 
-        long long ticks_end = (long long) ticks_MS << 32 | ticks_LS;
+		XTmrCtr_Enable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // start the timer
 
-        if(printstop == false) {
-          time_between = ((double)(ticks_end - ticks_start))/100000000.0;
-          printf("Time between: %lf seconds\r\n", time_between);
-          printstop = true;
-        }
+    u32 control_value = XTmrCtr_GetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);
+    xil_printf("Checking timer settings\n");
+    xil_printf("Control status register: %d\n", control_value);
 
-        XGpioPs_WritePin(&Gpio, ledpin, 0);
-      }
-      return 0;
+		XGpioPs_WritePin(&Gpio, ledpin, 1);
+		printstop = false;
     }
-    return 0;
+
+
+    if(stop && printstop == false) {
+
+		XTmrCtr_Disable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);
+
+    u32 control_value = XTmrCtr_GetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);
+    xil_printf("Checking timer settings\n");
+    xil_printf("Control status register: %d\n", control_value);
+
+		ticks_LS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
+		ticks_MS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
+
+		ticks_end = (long long) ticks_MS << 32 | ticks_LS;
+
+		xil_printf("Timer stopped\r\n");
+		printf("Test!! Ticks_LS: %lu,   Ticks_MS: %lu\r\n",ticks_LS, ticks_MS);
+		time_between = ((double)(ticks_end - ticks_start))/100000000.0;
+		printf("Time between: %lf seconds\r\n", time_between);
+		printstop = true;
+
+
+		u32 number = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);
+		printf("not cero please: %lu\n", number);
+		XGpioPs_WritePin(&Gpio, ledpin, 0);
+
+    }
+  }
+
+
+  return 0;
 }
