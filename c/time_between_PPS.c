@@ -150,8 +150,7 @@ int main(void) {
 static void my_intr_handler(void *CallBackRef){  //function called when interrupt occurs.
   //GET TIME
   u32 ticks = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
-  float ticks_float = (float)ticks;
-  float micros = ticks_float/( (float)AXI_TICKS_PER_MICROS );
+  u32 micros = ticks/AXI_TICKS_PER_MICROS;
 
   bool ppsSignal;
   bool flashSignal;
@@ -167,7 +166,7 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
   ppsSignal 	= XGpioPs_ReadPin(&Gpio, PPS_SIGNAL_PIN); //read PPS signal to verify state
   if (ppsSignal != prevPpsSignal) {
     if (ppsSignal == 1){
-      //RESET timer
+      //*************RESET timer********************//
       XTmrCtr_Disable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // start the timer
       XTmrCtr_SetLoadReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0, 0);   // Set the value in load register 1
       XTmrCtr_LoadTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // load the reg 1 value onto counter reg 1
@@ -175,13 +174,14 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
       XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0,ControlStatusIntr & (~XTC_CSR_LOAD_MASK));
       XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1,ControlStatusIntr & (~XTC_CSR_LOAD_MASK));
       XTmrCtr_Enable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // start the timer
+      //*******************************************//
 
       ppsCount ++;
-      xil_printf("Rising edge of PPS! PPS-count: %u\r\n", ppsCount);
+      //xil_printf("Rising edge of PPS! PPS-count: %u\r\n", ppsCount);
       XGpioPs_IntrClearPin(&Gpio, PPS_SIGNAL_PIN);
     }
     else if (ppsSignal == 0) {
-      xil_printf("Falling edge of PPS!\r\n");
+      //xil_printf("Falling edge of PPS!\r\n");
       XGpioPs_IntrClearPin(&Gpio, PPS_SIGNAL_PIN);
     }
   }
@@ -191,8 +191,8 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
   if (flashSignal != prevFlashSignal) {
     if (flashSignal == 1){
       frameCount++;
-      xil_printf("Rising edge of flash\r\n");
-      printf("Frame %u starts:\r\nTimestamp: PPS-count: %u, and %.0f us (microseconds)\r\n", frameCount, ppsCount, micros);
+      //xil_printf("Rising edge of flash\r\n");
+      xil_printf("Frame %u starts:\r\nTimestamp: PPS-count: %u s (seconds), and %u us (microseconds)\r\n", frameCount, ppsCount, micros);
 
 
       XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
@@ -200,8 +200,8 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
 
     else if (flashSignal == 0) {
 
-      xil_printf("Falling edge of Flash!\r\n");
-      printf("Frame %u ends:\r\nTimestamp: PPS-count: %u, and %.0f us (microseconds)\r\n", frameCount, ppsCount, micros);
+      //xil_printf("Falling edge of Flash\r\n");
+      xil_printf("Frame %u ends:\r\nTimestamp: PPS-count: %u s (seconds), and %u us (microseconds)\r\n", frameCount, ppsCount, micros);
       XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
     }
   }
