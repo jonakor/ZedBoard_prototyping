@@ -14,12 +14,19 @@
 #define TMRCTR_BASEADDR_0     XPAR_TMRCTR_0_BASEADDR // Defining the timer address
 #define XTC_CSR_CASC_MASK		0x00000800 // Defining the mask value for cascade mode
 
+//Clockfrequency
+#define AXI_CLOCK_FREQ 100000000
+#define AXI_TICKS_PER_SECOND AXI_CLOCK_FREQ
+#define AXI_TICKS_PER_MILLIS 100000
+#define AXI_TICKS_PER_MICROS 100
+#define NUMBER_MAX_32BIT 4294967295
+
 
 // GPIO_PS General InoutOutput
 #include "xgpiops.h"
 
 #define GPIO_DEVICE_ID		XPAR_XGPIOPS_0_DEVICE_ID
-#define PPS_SIGNAL_PIN 50  //PPS signal pin. Puls per second
+#define PPS_SIGNAL_PIN 13  //PPS signal pin. Puls per second
 #define FLASH_SIGNAL_PIN 51  //Flash signal pin.
 #define LED_PIN 7 // Processing system LED pin
 
@@ -47,6 +54,12 @@ static void my_intr_handler(void *CallBackRef); //function called when interrupt
 int main(void) {
   int status;
   u32 ControlStatus;
+
+  u32 ticksLS;
+  u32 ticksMS;
+  u64 totalTicks;
+  u64 totalMillis;
+  double millis;
 
   XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0,0x0); // clear control status reg
   //XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1,0x0); // clear control status reg
@@ -131,8 +144,14 @@ int main(void) {
 
   //loop
   while (1) {
-    status = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);
-    xil_printf("Outside interrupt handler. Ticks: %i\r\n", status);
+    ticksLS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
+    ticksMS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
+    totalTicks = ((u64) ticksLS) + ( ((u64) ticksMS) * ((u64) NUMBER_MAX_32BIT));
+    totalMillis = totalTicks/ ((u64) AXI_TICKS_PER_MILLIS);
+    millis = ((double) totalTicks)/ ((double) AXI_TICKS_PER_MILLIS);
+    xil_printf("Outside interrupt handler.\r\nTicks: %lu ticks,\r\nMilliseconds as integer %lu\r\n", totalTicks, totalMillis);
+    printf("Milliseconds as float: %.0f ms\r\n", millis);
+
 
     for (int i = 0; i < 300000000; i++) {  //for-loop to delay prints to console
       //Wait a while
@@ -153,6 +172,7 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
   u32 ticksLS;
   u32 ticksMS;
   u64 totalTicks;
+  u64 totalMillis;
   double millis;
 
   //PPS signal
@@ -178,13 +198,15 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
       ticksLS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
       ticksMS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
 
-      //totalTicks = (u64) ticksMS << 32 | ticksLS;
-      totalTicks = ticksMS + (ticksLS * 100000000);
-      millis = ((double) totalTicks)/100000.0;
+      totalTicks = ((u64) ticksLS) + ( ((u64) ticksMS) * ((u64) NUMBER_MAX_32BIT));
 
-      printf("ticksLS: %u, ticksMS: %u\r\n", ticksLS, ticksMS);
+      millis = ((double) totalTicks)/((double) AXI_TICKS_PER_MILLIS);
+      totalMillis = totalTicks/((u64) AXI_TICKS_PER_MILLIS);
+
       xil_printf("ticksLS: %u, ticksMS: %u\r\n", ticksLS, ticksMS);
-      printf("Rising edge of Flash! Timestamp: %llu ticks, %.0lf ms\r\n", totalTicks, millis);
+      xil_printf("Rising edge of Flash! Timestamp:\r\nTicks: %lu ticks,\r\nMilliseconds as integer %lu\r\n", totalTicks, totalMillis);
+      printf("Milliseconds as float: %.0f ms\r\n", millis);
+
 
       XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
     }
