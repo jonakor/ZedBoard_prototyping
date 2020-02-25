@@ -12,7 +12,7 @@
 #define TIMER_COUNTER_0     0
 #define TIMER_COUNTER_1     1
 #define TMRCTR_BASEADDR_0     XPAR_TMRCTR_0_BASEADDR // Defining the timer address
-#define XTC_CSR_CASC_MASK		0x00000800 // Definging the mask value for cascade mode
+#define XTC_CSR_CASC_MASK		0x00000800 // Defining the mask value for cascade mode
 
 
 // GPIO_PS General InoutOutput
@@ -46,6 +46,7 @@ static void my_intr_handler(void *CallBackRef); //function called when interrupt
 //loop
 int main(void) {
   int status;
+  u32 ControlStatus;
 
   XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0,0x0); // clear control status reg
   //XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1,0x0); // clear control status reg
@@ -76,7 +77,7 @@ int main(void) {
 	// 	Define data direction, output with 1
 	XGpioPs_SetDirectionPin(&Gpio, LED_PIN, 1);
 	XGpioPs_SetOutputEnablePin(&Gpio, LED_PIN, 1);
-  XGpioPs_WritePin(&Gpio, LED_PIN, 0);
+    XGpioPs_WritePin(&Gpio, LED_PIN, 0);
 
   Xil_ExceptionInit();
   Gic_Config = XScuGic_LookupConfig(INTC_DEVICE_ID);
@@ -119,8 +120,14 @@ int main(void) {
   XTmrCtr_SetLoadReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1, 0); // Set the value in load reg 2
   XTmrCtr_LoadTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1); // load the reg 2 value onto counter reg 2
 */  // ---------------------------------------------------
-  XTmrCtr_Enable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // start the timer
-  xil_printf("Timer started\r\n");
+
+    ControlStatus = XTmrCtr_GetControlStatusReg(TMRCTR_BASEADDR_0,TIMER_COUNTER_0);
+    XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0,ControlStatus & (~XTC_CSR_LOAD_MASK));
+    XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1,ControlStatus & (~XTC_CSR_LOAD_MASK));
+    // When counters' value is loaded from the load registry, a LOAD bit is enabled, blocking any couting. This resetts that LOAD bit.
+
+    XTmrCtr_Enable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // start the timer
+    xil_printf("Timer started\r\n");
 
   //loop
   while (1) {
@@ -165,14 +172,20 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
   //Flash signal
   flashSignal = XGpioPs_ReadPin(&Gpio, FLASH_SIGNAL_PIN); //read Flash signal to verify state
   if (flashSignal != prevFlashSignal) {
+
     if (flashSignal == 1){
+
       ticksLS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
       ticksMS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
-      totalTicks = (u64) ticksMS << 32 | ticksLS;
+
+      //totalTicks = (u64) ticksMS << 32 | ticksLS;
+      totalTicks = ticksMS + (ticksLS * 100000000);
       millis = ((double) totalTicks)/100000.0;
+
       printf("ticksLS: %u, ticksMS: %u\r\n", ticksLS, ticksMS);
       xil_printf("ticksLS: %u, ticksMS: %u\r\n", ticksLS, ticksMS);
       printf("Rising edge of Flash! Timestamp: %llu ticks, %.0lf ms\r\n", totalTicks, millis);
+
       XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
     }
 
