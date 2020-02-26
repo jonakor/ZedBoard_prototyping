@@ -130,7 +130,7 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
       frameCount++;
       microsSinceUTC = (ppsCount*1000000) + micros;
       //xil_printf("Rising edge of flash\r\n");
-      xil_printf("Frame %u starts\tUTC-startstamp + %u \tus (microseconds)\r\n", frameCount, microsSinceUTC);
+      xil_printf("Frame %4u starts\tUTC-startstamp + %9u us (microseconds)\r\n", frameCount, microsSinceUTC);
       timestampArray[frameCount-1][1] = microsSinceUTC;
 
       XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
@@ -139,7 +139,7 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
     else if (flashSignal == 0) {
       microsSinceUTC = (ppsCount*1000000) + micros;
       //xil_printf("Falling edge of Flash\r\n");
-      xil_printf("Frame %u ends\tUTC-startstamp + %u \tus (microseconds)\r\n\r\n", frameCount, microsSinceUTC);
+      xil_printf("Frame %4u ends  \tUTC-startstamp + %9u us (microseconds)\r\n\r\n", frameCount, microsSinceUTC);
       timestampArray[frameCount-1][2] = microsSinceUTC;
 
       XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
