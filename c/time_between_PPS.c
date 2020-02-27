@@ -19,11 +19,10 @@
 #define AXI_TICKS_PER_SECOND AXI_CLOCK_FREQ
 #define AXI_TICKS_PER_MILLIS (AXI_CLOCK_FREQ/1000)
 #define AXI_TICKS_PER_MICROS (AXI_CLOCK_FREQ/1000000)
+#define TIMESTAMP_ARRAY_SIZE 200
 
-#define EXAMPLE_UTC 2020:02:26 14:31:
-
-XTmrCtr TimerCounterInst;
-static u32 timestampArray[200][2];
+static XTmrCtr TimerCounterInst;
+static u32 timestampArray[TIMESTAMP_ARRAY_SIZE][2];
 
 
 // GPIO_PS General InoutOutput
@@ -34,8 +33,8 @@ static u32 timestampArray[200][2];
 #define FLASH_SIGNAL_PIN 10  //Flash signal pin.
 #define LED_PIN 7 // Processing system LED pin
 
-XGpioPs Gpio; /* The Instance of the GPIO Driver. Possibly static */
-XGpioPs_Config *GPIOConfigPtr;
+static XGpioPs Gpio; /* The Instance of the GPIO Driver. Possibly static */
+static XGpioPs_Config *GPIOConfigPtr;
 
 
 // Interrupt
@@ -48,14 +47,15 @@ XGpioPs_Config *GPIOConfigPtr;
 #define GPIO_INTERRUPT_ID	XPAR_XGPIOPS_0_INTR
 #define INTR_TYPE         XGPIOPS_IRQ_TYPE_EDGE_BOTH //Makes interrupt trig on rising edge. Defined in xgpiops.h
 
-XScuGic my_Gic; /* The Instance of the Interrupt Controller Driver. Possibly static */
-XScuGic_Config *Gic_Config;
+static XScuGic my_Gic; /* The Instance of the Interrupt Controller Driver. Possibly static */
+static XScuGic_Config *Gic_Config;
 
 
-static void initialize_timestamps(void);
-static void timestamps_start(void);
-static void timestamps_stop(void);
-static void my_intr_handler(void); //function called when interrupt occurs.  *CallBackRef
+void initialize_timestamps(void);
+void timestamps_start(void);
+void timestamps_stop(void);
+
+static void my_intr_handler(bool InitFlag); //function called when interrupt occurs.  *CallBackRef
 static void gpio_setup(void);
 static void timer_setup(void);
 static void interrupt_setup(void);
@@ -90,20 +90,23 @@ int main(void) {
 FUNCTIONS
 
 */
-static void initialize_timestamps(void) {
+void initialize_timestamps(void) {
   gpio_setup();
   timer_setup();
   interrupt_setup();
   my_intr_handler(1); //Reseting frame and PPS countervalues to zero
 
 }
-static void timestamps_start(void) {
+void timestamps_start(void) {
   XTmrCtr_Start(&TimerCounterInst, TIMER_COUNTER_0);
   xil_printf("Timer started\r\n");
 }
-static void timestamps_stop(void) {
+void timestamps_stop(void) {
   XScuGic_Disable(&my_Gic, GPIO_INTERRUPT_ID);
+
 }
+
+
 static void my_intr_handler(bool InitFlag){  //function called when interrupt occurs. *CallBackRef
 
   u32 ticks;
