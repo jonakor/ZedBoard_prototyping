@@ -1,5 +1,6 @@
 // Standard library includes
 #include <stdio.h>
+#include <stdlib.h>
 #include "platform.h"
 #include "stdbool.h"
 #include "xparameters.h"
@@ -19,10 +20,8 @@
 #define AXI_TICKS_PER_SECOND AXI_CLOCK_FREQ
 #define AXI_TICKS_PER_MILLIS (AXI_CLOCK_FREQ/1000)
 #define AXI_TICKS_PER_MICROS (AXI_CLOCK_FREQ/1000000)
-#define TIMESTAMP_ARRAY_SIZE 200
 
 static XTmrCtr TimerCounterInst;
-static u32 timestampArray[TIMESTAMP_ARRAY_SIZE][2];
 
 
 // GPIO_PS General InoutOutput
@@ -49,22 +48,32 @@ static XGpioPs_Config *GPIOConfigPtr;
 
 static XScuGic my_Gic; /* The Instance of the Interrupt Controller Driver. Possibly static */
 static XScuGic_Config *Gic_Config;
+static bool InitFlag;
 
 
-void initialize_timestamps(void);
+void initialize_timestamps(u32 **arrayPointer);
 void timestamps_start(void);
 void timestamps_stop(void);
 
-static void my_intr_handler(bool InitFlag); //function called when interrupt occurs.  *CallBackRef
+static void my_intr_handler(u32 **arrayPointer); //function called when interrupt occurs.  *CallBackRef
 static void gpio_setup(void);
 static void timer_setup(void);
-static void interrupt_setup(void);
+static void interrupt_setup(u32 **arrayPointer);
 
 
-int main(void) {
+int main(void) {  //test bed
 
-  initialize_timestamps();
+  u32 **timestampArrayPtr;
+  timestampArrayPtr = (u32 **)malloc(sizeof(u32 *) * 2300);
+
+  for (u16 i = 0; i < 2300; i++) {
+    timestampArrayPtr[i] = (u32 *)malloc(sizeof(u32) * 2);
+  }
+
+  initialize_timestamps(timestampArrayPtr);
+
   timestamps_start();
+
 
 
 
@@ -74,12 +83,15 @@ int main(void) {
     u32 ticks = XTmrCtr_GetValue(&TimerCounterInst, TIMER_COUNTER_0);
     u32 micros = ticks/AXI_TICKS_PER_MICROS;
     if (micros > 10000000) {
-      for (size_t i = 0; i < 200; i++) {
-        xil_printf("%9u\t%9u\r\n", timestampArray[i][1], timestampArray[i][2]);
+
+      for (u16 i = 0; i < 200; i++) {
+        xil_printf("%9u\t%9u\r\n", timestampArrayPtr[i][0], timestampArrayPtr[i][1]);
       }
+      // timestamps_stop();
+      // micros = 0;
     }
 
-    for (int i = 0; i < 300000000; i++) {  //for-loop to delay prints to console
+    for (int i = 0; i < 100000000; i++) {  //for-loop to delay prints to console
       //Wait a while
     }
   }
@@ -90,24 +102,31 @@ int main(void) {
 FUNCTIONS
 
 */
-void initialize_timestamps(void) {
+void initialize_timestamps(u32 **arrayPointer) {
+
   gpio_setup();
   timer_setup();
-  interrupt_setup();
-  my_intr_handler(1); //Reseting frame and PPS countervalues to zero
+  interrupt_setup(arrayPointer);
+  InitFlag = 1;
+  my_intr_handler(arrayPointer); //Reseting frame and PPS countervalues to zero
+  InitFlag = 0;
+
+
 
 }
 void timestamps_start(void) {
-  XTmrCtr_Start(&TimerCounterInst, TIMER_COUNTER_0);
-  xil_printf("Timer started\r\n");
+  XTmrCtr_Start(&TimerCounterInst, TIMER_COUNTER_0); //Starts timer
+  XScuGic_Enable(&my_Gic, GPIO_INTERRUPT_ID); // enables interrupts
+  Xil_ExceptionEnableMask(XIL_EXCEPTION_IRQ); // enables interrupts
+  xil_printf("Timer started and interrupts enabled\r\n");
 }
 void timestamps_stop(void) {
   XScuGic_Disable(&my_Gic, GPIO_INTERRUPT_ID);
-
+  XTmrCtr_Stop(&TimerCounterInst, TIMER_COUNTER_0); //Starts timer
 }
 
 
-static void my_intr_handler(bool InitFlag){  //function called when interrupt occurs. *CallBackRef
+static void my_intr_handler(u32 **arrayPointer) {  //function called when interrupt occurs. *CallBackRef
 
   u32 ticks;
   u32 micros;
@@ -154,7 +173,7 @@ static void my_intr_handler(bool InitFlag){  //function called when interrupt oc
         frameCount++;
         //xil_printf("Rising edge of flash\r\n");
         xil_printf("Frame %4u starts\tUTC-startstamp + %9u us (microseconds)\r\n", frameCount, microsSinceUTC);
-        timestampArray[frameCount-1][1] = microsSinceUTC;
+        arrayPointer[frameCount-1][0] = microsSinceUTC;
 
         XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
       }
@@ -163,7 +182,7 @@ static void my_intr_handler(bool InitFlag){  //function called when interrupt oc
         microsSinceUTC = (ppsCount*1000000) + micros;
         //xil_printf("Falling edge of Flash\r\n");
         xil_printf("Frame %4u ends  \tUTC-startstamp + %9u us (microseconds)\r\n\r\n", frameCount, microsSinceUTC);
-        timestampArray[frameCount-1][2] = microsSinceUTC;
+        arrayPointer[frameCount-1][1] = microsSinceUTC;
 
         XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
       }
@@ -198,7 +217,7 @@ static void gpio_setup(void) {
   XGpioPs_WritePin(&Gpio, LED_PIN, 0);
 
 }
-static void interrupt_setup(void) {
+static void interrupt_setup(u32 **arrayPointer) {
   u32 status;
 
   Xil_ExceptionInit();
@@ -210,7 +229,7 @@ static void interrupt_setup(void) {
 
   Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT,(Xil_ExceptionHandler)XScuGic_InterruptHandler, &my_Gic);
 
-  XScuGic_Connect(&my_Gic, GPIO_INTERRUPT_ID,(Xil_ExceptionHandler)my_intr_handler, NULL); //changed (void *)&Gpio to (void)
+  XScuGic_Connect(&my_Gic, GPIO_INTERRUPT_ID,(Xil_ExceptionHandler)my_intr_handler, (u32 **)arrayPointer); //changed (void *)&Gpio to (void)
 
   XGpioPs_IntrClear(&Gpio, 0, 0x0); //clears out all interrupt enabled by fault
   XGpioPs_IntrClear(&Gpio, 1, 0x0);
@@ -226,13 +245,13 @@ static void interrupt_setup(void) {
 
   XGpioPs_IntrClearPin(&Gpio, PPS_SIGNAL_PIN);
   XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
-  XScuGic_Enable(&my_Gic, GPIO_INTERRUPT_ID);
 
-  Xil_ExceptionEnableMask(XIL_EXCEPTION_IRQ);
+
 
   xil_printf("Interrupt Initialized\r\n");
 
 }
+
 static void timer_setup(void) {
   XTmrCtr_Initialize(&TimerCounterInst,TIMER_COUNTER_0);
   XTmrCtr_SetResetValue(&TimerCounterInst, TIMER_COUNTER_0, 0);
