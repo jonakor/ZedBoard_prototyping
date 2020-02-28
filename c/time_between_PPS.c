@@ -51,7 +51,7 @@ static XScuGic_Config *Gic_Config;
 static bool InitFlag;
 
 
-void initialize_timestamps(u32 **arrayPointer);
+void timestamps_initialize(u32 **arrayPointer);
 void timestamps_start(void);
 void timestamps_stop(void);
 
@@ -61,18 +61,24 @@ static void timer_setup(void);
 static void interrupt_setup(u32 **arrayPointer);
 
 
+
+
 int main(void) {  //test bed
 
   u32 **timestampArrayPtr;
-  timestampArrayPtr = (u32 **)malloc(sizeof(u32 *) * 2300);
+  timestampArrayPtr = (u32 **)calloc(2300, sizeof(u32 *));
 
-  for (u16 i = 0; i < 2300; i++) {
-    timestampArrayPtr[i] = (u32 *)malloc(sizeof(u32) * 2);
+  for (int i = 0; i < 2300; i++) {
+    timestampArrayPtr[i] = (u32 *)calloc(2, sizeof(u32));
   }
 
-  initialize_timestamps(timestampArrayPtr);
+
+  timestamps_initialize(timestampArrayPtr);
 
   timestamps_start();
+
+
+
 
 
 
@@ -84,11 +90,10 @@ int main(void) {  //test bed
     u32 micros = ticks/AXI_TICKS_PER_MICROS;
     if (micros > 10000000) {
 
-      for (u16 i = 0; i < 200; i++) {
-        xil_printf("%9u\t%9u\r\n", timestampArrayPtr[i][0], timestampArrayPtr[i][1]);
+      for (int i = 0; i < 2300; i++) {
+        xil_printf("%u\t%u\r\n", timestampArrayPtr[i][0], timestampArrayPtr[i][1]);
       }
-      // timestamps_stop();
-      // micros = 0;
+      timestamps_stop();
     }
 
     for (int i = 0; i < 100000000; i++) {  //for-loop to delay prints to console
@@ -102,7 +107,13 @@ int main(void) {  //test bed
 FUNCTIONS
 
 */
-void initialize_timestamps(u32 **arrayPointer) {
+void timestamps_initialize(u32 **arrayPointer) {
+  for (int i = 0; i < 2300; i++) {
+    for (int j = 0; j < 2; j++) {
+      arrayPointer[i][j] = 0;
+    }
+  }
+
 
   gpio_setup();
   timer_setup();
@@ -123,6 +134,7 @@ void timestamps_start(void) {
 void timestamps_stop(void) {
   XScuGic_Disable(&my_Gic, GPIO_INTERRUPT_ID);
   XTmrCtr_Stop(&TimerCounterInst, TIMER_COUNTER_0); //Starts timer
+  XTmrCtr_Reset(&TimerCounterInst, TIMER_COUNTER_0);
 }
 
 
@@ -132,8 +144,8 @@ static void my_intr_handler(u32 **arrayPointer) {  //function called when interr
   u32 micros;
   u32 microsSinceUTC;
 
-  static u16 ppsCount = 0;
-  static u16 frameCount = 0;
+  static u32 ppsCount = 0;
+  static u32 frameCount = 0;
 
   static bool prevPpsSignal = 0;
   static bool prevFlashSignal = 0;
@@ -146,6 +158,7 @@ static void my_intr_handler(u32 **arrayPointer) {  //function called when interr
     frameCount = 0;
     ppsCount = 0;
   }
+
   else {
     //PPS signal
     if (ppsSignal != prevPpsSignal) {
@@ -172,8 +185,8 @@ static void my_intr_handler(u32 **arrayPointer) {  //function called when interr
       if (flashSignal == 1){
         frameCount++;
         //xil_printf("Rising edge of flash\r\n");
-        xil_printf("Frame %4u starts\tUTC-startstamp + %9u us (microseconds)\r\n", frameCount, microsSinceUTC);
         arrayPointer[frameCount-1][0] = microsSinceUTC;
+        xil_printf("Frame %4u starts\tUTC-startstamp + %9u us (microseconds)\r\n", frameCount, arrayPointer[frameCount-1][0]);
 
         XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
       }
@@ -181,8 +194,8 @@ static void my_intr_handler(u32 **arrayPointer) {  //function called when interr
       else if (flashSignal == 0) {
         microsSinceUTC = (ppsCount*1000000) + micros;
         //xil_printf("Falling edge of Flash\r\n");
-        xil_printf("Frame %4u ends  \tUTC-startstamp + %9u us (microseconds)\r\n\r\n", frameCount, microsSinceUTC);
         arrayPointer[frameCount-1][1] = microsSinceUTC;
+        xil_printf("Frame %4u ends  \tUTC-startstamp + %9u us (microseconds)\r\n", frameCount, arrayPointer[frameCount-1][1]);
 
         XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
       }
