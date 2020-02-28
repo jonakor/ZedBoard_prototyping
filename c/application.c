@@ -48,18 +48,13 @@ XScuGic my_Gic; /* The Instance of the Interrupt Controller Driver. Possibly sta
 XScuGic_Config *Gic_Config;
 
 static void my_intr_handler(void *CallBackRef); //function called when interrupt occurs.
+u32 Fetch_Time();
 
 
 //loop
 int main(void) {
   int status;
   u32 ControlStatus;
-
-  u32 ticksLS;
-  u32 ticksMS;
-  u64 totalTicks;
-  u64 totalMillis;
-  double millis;
 
   XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0,0x0); // clear control status reg
   //XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1,0x0); // clear control status reg
@@ -126,13 +121,8 @@ int main(void) {
 
   xil_printf("Interrupt Initialized\r\n");
 
-  // ---------- Counter reset ----------------------
   XTmrCtr_SetLoadReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0, 0);   // Set the value in load register 1
   XTmrCtr_LoadTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // load the reg 1 value onto counter reg 1
-/*
-  XTmrCtr_SetLoadReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1, 0); // Set the value in load reg 2
-  XTmrCtr_LoadTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1); // load the reg 2 value onto counter reg 2
-*/  // ---------------------------------------------------
 
     ControlStatus = XTmrCtr_GetControlStatusReg(TMRCTR_BASEADDR_0,TIMER_COUNTER_0);
     XTmrCtr_SetControlStatusReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0,ControlStatus & (~XTC_CSR_LOAD_MASK));
@@ -142,16 +132,12 @@ int main(void) {
     XTmrCtr_Enable(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // start the timer
     xil_printf("Timer started\r\n");
 
+
+
   //loop
   while (1) {
-    ticksLS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
-    ticksMS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
-    totalTicks = ((u64) ticksLS) + ( ((u64) ticksMS) * ((u64) NUMBER_MAX_32BIT));
-    totalMillis = totalTicks/ ((u64) AXI_TICKS_PER_MILLIS);
-    millis = ((double) totalTicks)/ ((double) AXI_TICKS_PER_MILLIS);
-    xil_printf("Outside interrupt handler.\r\nTicks: %lu ticks,\r\nMilliseconds as integer %lu\r\n", totalTicks, totalMillis);
-    printf("Milliseconds as float: %.0f ms\r\n", millis);
 
+    xil_printf("Outside interrupt handler. Current time %lu us\r\n", Fetch_Time());
 
     for (int i = 0; i < 300000000; i++) {  //for-loop to delay prints to console
       //Wait a while
@@ -168,23 +154,18 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
   static bool prevPpsSignal = 0;
   static bool prevFlashSignal = 0;
 
-  static u8 count = 0;
-  u32 ticksLS;
-  u32 ticksMS;
-  u64 totalTicks;
-  u64 totalMillis;
-  double millis;
+  static u16 count = 0;
 
-  //PPS signal
+  //PS signal
   ppsSignal 	= XGpioPs_ReadPin(&Gpio, PPS_SIGNAL_PIN); //read PPS signal to verify state
   if (ppsSignal != prevPpsSignal) {
     if (ppsSignal == 1){
       count ++;
-      xil_printf("Rising edge of PPS! PPS-count: %i\r\n", count);
+      //xil_printf("Rising edge of PPS! PPS-count: %i\r\n", count);
       XGpioPs_IntrClearPin(&Gpio, PPS_SIGNAL_PIN);
     }
     else if (ppsSignal == 0) {
-      xil_printf("Falling edge of PPS!\r\n");
+      //xil_printf("Falling edge of PPS!\r\n");
       XGpioPs_IntrClearPin(&Gpio, PPS_SIGNAL_PIN);
     }
   }
@@ -195,24 +176,12 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
 
     if (flashSignal == 1){
 
-      ticksLS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);  // Fetch LSB value
-      ticksMS = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);  // Fetch MSB value
-
-      totalTicks = ((u64) ticksLS) + ( ((u64) ticksMS) * ((u64) NUMBER_MAX_32BIT));
-
-      millis = ((double) totalTicks)/((double) AXI_TICKS_PER_MILLIS);
-      totalMillis = totalTicks/((u64) AXI_TICKS_PER_MILLIS);
-
-      xil_printf("ticksLS: %u, ticksMS: %u\r\n", ticksLS, ticksMS);
-      xil_printf("Rising edge of Flash! Timestamp:\r\nTicks: %lu ticks,\r\nMilliseconds as integer %lu\r\n", totalTicks, totalMillis);
-      printf("Milliseconds as float: %.0f ms\r\n", millis);
-
-
+      xil_printf("Rising edge of Flash! Timestamp: %lu us\r\n", Fetch_Time());
       XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
     }
 
     else if (flashSignal == 0) {
-      xil_printf("Falling edge of Flash!\r\n");
+      xil_printf("Falling edge of Flash! Timestamp: %lu us\r\n", Fetch_Time());
       XGpioPs_IntrClearPin(&Gpio, FLASH_SIGNAL_PIN);
     }
   }
@@ -221,4 +190,19 @@ static void my_intr_handler(void *CallBackRef){  //function called when interrup
   prevFlashSignal = flashSignal;
   XGpioPs_WritePin(&Gpio, LED_PIN, ppsSignal); // will be handy when interrupt triggers on both edges. led will blink according to PPS-signal
 
+}
+
+u32 Fetch_Time() {
+    //u32 timeformat = 100000;  // milliseconds
+    u32 timeformat = 100;  // microseconds
+    u32 maxvalue = 4294967295;
+
+    u32 currentTime;
+    u32 tickMSB = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_1);
+    u32 tickLSB = XTmrCtr_GetTimerCounterReg(TMRCTR_BASEADDR_0, TIMER_COUNTER_0);
+
+    u32 timeLSB = tickLSB / timeformat;
+    currentTime = (tickMSB * (maxvalue / timeformat)) + timeLSB;
+
+    return currentTime;
 }
