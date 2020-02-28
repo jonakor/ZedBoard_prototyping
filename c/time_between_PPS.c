@@ -1,3 +1,6 @@
+/*
+      REMEMBER HEAP-MEMORY SIZE!!!
+*/
 // Standard library includes
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +15,6 @@
 #include "xtmrctr.h"
 
 #define TIMER_COUNTER_0     0
-#define TIMER_COUNTER_1     1
 #define TMRCTR_BASEADDR_0     XPAR_TMRCTR_0_BASEADDR // Defining the timer address
 
 //Clockfrequency
@@ -52,46 +54,41 @@ static bool InitFlag;
 
 
 void timestamps_initialize(u32 **arrayPointer);
-void timestamps_start(void);
-void timestamps_stop(void);
+void timestamps_start();
+void timestamps_stop();
 
 static void my_intr_handler(u32 **arrayPointer); //function called when interrupt occurs.  *CallBackRef
-static void gpio_setup(void);
-static void timer_setup(void);
+static void gpio_setup();
+static void timer_setup();
 static void interrupt_setup(u32 **arrayPointer);
 
 
-
+#define TIMESTAMP_ARRAY_SIZE 2300
 
 int main(void) {  //test bed
 
   u32 **timestampArrayPtr;
-  timestampArrayPtr = (u32 **)calloc(2300, sizeof(u32 *));
+  timestampArrayPtr = (u32 **)calloc(TIMESTAMP_ARRAY_SIZE, sizeof(u32 *));
 
-  for (int i = 0; i < 2300; i++) {
+  for (int i = 0; i < TIMESTAMP_ARRAY_SIZE; i++) {
     timestampArrayPtr[i] = (u32 *)calloc(2, sizeof(u32));
   }
 
-
   timestamps_initialize(timestampArrayPtr);
-
   timestamps_start();
-
-
-
 
 
 
 
   //loop
   while (1) {
-    xil_printf("Processing outside interrupt handler... waiting for interrupts\r\n");
+    //xil_printf("Processing outside interrupt handler... waiting for interrupts\r\n");
     u32 ticks = XTmrCtr_GetValue(&TimerCounterInst, TIMER_COUNTER_0);
     u32 micros = ticks/AXI_TICKS_PER_MICROS;
     if (micros > 10000000) {
 
-      for (int i = 0; i < 2300; i++) {
-        xil_printf("%u\t%u\r\n", timestampArrayPtr[i][0], timestampArrayPtr[i][1]);
+      for (int i = 0; i < TIMESTAMP_ARRAY_SIZE; i++) {
+        xil_printf("%9u\t%9u\r\n", timestampArrayPtr[i][0], timestampArrayPtr[i][1]);
       }
       timestamps_stop();
     }
@@ -108,7 +105,7 @@ FUNCTIONS
 
 */
 void timestamps_initialize(u32 **arrayPointer) {
-  for (int i = 0; i < 2300; i++) {
+  for (int i = 0; i < TIMESTAMP_ARRAY_SIZE; i++) {
     for (int j = 0; j < 2; j++) {
       arrayPointer[i][j] = 0;
     }
@@ -125,13 +122,13 @@ void timestamps_initialize(u32 **arrayPointer) {
 
 
 }
-void timestamps_start(void) {
+void timestamps_start() {
   XTmrCtr_Start(&TimerCounterInst, TIMER_COUNTER_0); //Starts timer
   XScuGic_Enable(&my_Gic, GPIO_INTERRUPT_ID); // enables interrupts
   Xil_ExceptionEnableMask(XIL_EXCEPTION_IRQ); // enables interrupts
   xil_printf("Timer started and interrupts enabled\r\n");
 }
-void timestamps_stop(void) {
+void timestamps_stop() {
   XScuGic_Disable(&my_Gic, GPIO_INTERRUPT_ID);
   XTmrCtr_Stop(&TimerCounterInst, TIMER_COUNTER_0); //Starts timer
   XTmrCtr_Reset(&TimerCounterInst, TIMER_COUNTER_0);
@@ -144,8 +141,8 @@ static void my_intr_handler(u32 **arrayPointer) {  //function called when interr
   u32 micros;
   u32 microsSinceUTC;
 
-  static u32 ppsCount = 0;
-  static u32 frameCount = 0;
+  static u16 ppsCount = 0;
+  static u16 frameCount = 0;
 
   static bool prevPpsSignal = 0;
   static bool prevFlashSignal = 0;
@@ -207,7 +204,7 @@ static void my_intr_handler(u32 **arrayPointer) {  //function called when interr
 
   }
 }
-static void gpio_setup(void) {
+static void gpio_setup() {
   u32 status;
 
   GPIOConfigPtr = XGpioPs_LookupConfig(GPIO_DEVICE_ID);
@@ -265,7 +262,7 @@ static void interrupt_setup(u32 **arrayPointer) {
 
 }
 
-static void timer_setup(void) {
+static void timer_setup() {
   XTmrCtr_Initialize(&TimerCounterInst,TIMER_COUNTER_0);
   XTmrCtr_SetResetValue(&TimerCounterInst, TIMER_COUNTER_0, 0);
   xil_printf("Timer setup complete\r\n");
