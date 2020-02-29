@@ -11,7 +11,6 @@
 #include "xil_printf.h"
 
 //Timer
-// #include "xtmrctr_l.h"
 #include "xtmrctr.h"
 
 #define TIMER_COUNTER_0     0
