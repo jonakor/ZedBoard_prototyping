@@ -64,7 +64,7 @@ static void interrupt_setup(u32 **arrayPointer);
 
 #define TIMESTAMP_ARRAY_SIZE 2300
 
-int main(void) {  //test bed
+void main() {  //test bed
 
   u32 **timestampArrayPtr;
   timestampArrayPtr = (u32 **)calloc(TIMESTAMP_ARRAY_SIZE, sizeof(u32 *));
@@ -117,9 +117,6 @@ void timestamps_initialize(u32 **arrayPointer) {
   InitFlag = 1;
   my_intr_handler(arrayPointer); //Reseting frame and PPS countervalues to zero
   InitFlag = 0;
-
-
-
 }
 void timestamps_start() {
   XTmrCtr_Start(&TimerCounterInst, TIMER_COUNTER_0); //Starts timer
@@ -132,8 +129,6 @@ void timestamps_stop() {
   XTmrCtr_Stop(&TimerCounterInst, TIMER_COUNTER_0); //Starts timer
   XTmrCtr_Reset(&TimerCounterInst, TIMER_COUNTER_0);
 }
-
-
 static void my_intr_handler(u32 **arrayPointer) {  //function called when interrupt occurs. *CallBackRef
 
   u32 ticks;
@@ -224,7 +219,6 @@ static void gpio_setup() {
 	XGpioPs_SetDirectionPin(&Gpio, LED_PIN, 1);
 	XGpioPs_SetOutputEnablePin(&Gpio, LED_PIN, 1);
   XGpioPs_WritePin(&Gpio, LED_PIN, 0);
-
 }
 static void interrupt_setup(u32 **arrayPointer) {
   u32 status;
@@ -258,9 +252,7 @@ static void interrupt_setup(u32 **arrayPointer) {
 
 
   xil_printf("Interrupt Initialized\r\n");
-
 }
-
 static void timer_setup() {
   XTmrCtr_Initialize(&TimerCounterInst,TIMER_COUNTER_0);
   XTmrCtr_SetResetValue(&TimerCounterInst, TIMER_COUNTER_0, 0);
