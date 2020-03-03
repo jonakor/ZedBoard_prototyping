@@ -1,6 +1,6 @@
-/*
-      REMEMBER HEAP-MEMORY SIZE!!!
-*/
+//////////////////////////////////////////////////////////
+//              REMEMBER HEAP-MEMORY SIZE               //
+//////////////////////////////////////////////////////////
 // Standard library includes
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,8 +29,8 @@ static XTmrCtr TimerCounterInst;
 #include "xgpiops.h"
 
 #define GPIO_DEVICE_ID		XPAR_XGPIOPS_0_DEVICE_ID
-#define PPS_SIGNAL_PIN 13  //PPS signal pin. Puls per second
-#define FLASH_SIGNAL_PIN 10  //Flash signal pin.
+#define PPS_SIGNAL_PIN 13  //PPS signal pin. Puls per second. JE1
+#define FLASH_SIGNAL_PIN 12  //Flash signal pin. JE4
 #define LED_PIN 7 // Processing system LED pin
 
 static XGpioPs Gpio; /* The Instance of the GPIO Driver. Possibly static */
@@ -64,7 +64,7 @@ static void interrupt_setup(u32 **arrayPointer);
 
 #define TIMESTAMP_ARRAY_SIZE 2300
 
-void main() {  //test bed
+int main() {  //test bed
 
   u32 **timestampArrayPtr;
   timestampArrayPtr = (u32 **)calloc(TIMESTAMP_ARRAY_SIZE, sizeof(u32 *));
@@ -81,14 +81,16 @@ void main() {  //test bed
 
   //loop
   while (1) {
-    //xil_printf("Processing outside interrupt handler... waiting for interrupts\r\n");
-    u32 ticks = XTmrCtr_GetValue(&TimerCounterInst, TIMER_COUNTER_0);
-    u32 micros = ticks/AXI_TICKS_PER_MICROS;
+    // u32 ticks = XTmrCtr_GetValue(&TimerCounterInst, TIMER_COUNTER_0);
+    // u32 micros = ticks/AXI_TICKS_PER_MICROS;
+    //xil_printf("Processing outside interrupt handler... waiting for interrupts\r\nMicros: %u us", micros);
+
     if (micros > 10000000) {
 
       for (int i = 0; i < TIMESTAMP_ARRAY_SIZE; i++) {
         xil_printf("%9u\t%9u\r\n", timestampArrayPtr[i][0], timestampArrayPtr[i][1]);
       }
+
       timestamps_stop();
     }
 
