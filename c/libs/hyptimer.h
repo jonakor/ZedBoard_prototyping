@@ -15,6 +15,6 @@ void hyp_timer_stop();
 
 void hyp_timer_reset();
 
-void hyp_timer_getTime();
+u32 hyp_timer_getTime();
 
 #endif //HYPTIMER_H
