@@ -1,5 +1,6 @@
-
+#include "stdlib.h"
 #include "timestamp.h"
+#include "xil_printf.h"
 
 #define TIMESTAMP_ARRAY_SIZE 2300
 

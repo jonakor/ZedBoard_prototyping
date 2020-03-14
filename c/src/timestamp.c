@@ -21,7 +21,7 @@
 #include <xil_exception.h>
 #include <xplatform_info.h>
 
-#include "utils/timestamp.h"
+#include "timestamp.h"
 
 #define TIMER_COUNTER_0     0
 #define TMRCTR_BASEADDR_0     XPAR_TMRCTR_0_BASEADDR // Defining the timer address
@@ -37,8 +37,8 @@ static XTmrCtr TimerCounterInst;
 //static u32 timestampArray[TIMESTAMP_ARRAY_SIZE][2];
 
 #define GPIO_DEVICE_ID		XPAR_XGPIOPS_0_DEVICE_ID
-#define PPS_SIGNAL_PIN 13  //PPS signal pin. Puls per second
-#define FLASH_SIGNAL_PIN 12  //Flash signal pin.
+#define PPS_SIGNAL_PIN 50//13  //PPS signal pin. Puls per second
+#define FLASH_SIGNAL_PIN 51//12  //Flash signal pin.
 #define LED_PIN 7 // Processing system LED pin
 
 static XGpioPs Gpio; /* The Instance of the GPIO Driver. Possibly static */
@@ -196,15 +196,15 @@ static void interrupt_setup(u32 **arrayPointer) {
 
   XScuGic_Connect(&my_Gic, GPIO_INTERRUPT_ID,(Xil_ExceptionHandler)my_intr_handler, (u32 **)arrayPointer); //changed (void *)&Gpio to (void)
 
-  XGpioPs_IntrClear(&Gpio, 0, 0x0); //clears out all interrupt enabled by fault
-  XGpioPs_IntrClear(&Gpio, 1, 0x0);
-  XGpioPs_IntrClear(&Gpio, 2, 0x0);
-  XGpioPs_IntrClear(&Gpio, 3, 0x0);
+  // XGpioPs_IntrClear(&Gpio, 0, 0x0); //clears out all interrupt enabled by fault
+  // XGpioPs_IntrClear(&Gpio, 1, 0x0);
+  // XGpioPs_IntrClear(&Gpio, 2, 0x0);
+  // XGpioPs_IntrClear(&Gpio, 3, 0x0);
 
   /* Enable the GPIO interrupts on PPS and Flash signal pin */
   XGpioPs_IntrEnablePin(&Gpio, PPS_SIGNAL_PIN);
   XGpioPs_IntrEnablePin(&Gpio, FLASH_SIGNAL_PIN);
-  /* Enable falling edge interrupts for PPS and Flash signal pin*/
+  /* Enable rising and falling edge interrupts for PPS and Flash signal pin*/
   XGpioPs_SetIntrTypePin(&Gpio, PPS_SIGNAL_PIN, INTR_TYPE);
   XGpioPs_SetIntrTypePin(&Gpio, FLASH_SIGNAL_PIN, INTR_TYPE);
 
