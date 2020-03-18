@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo "Compiling with source files"
+
+arm-linux-gnueabihf-gcc -Wall c/timertest.c c/src/hyptimer.c -o timertest
+
+echo "Finished somehow"

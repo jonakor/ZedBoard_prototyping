@@ -18,7 +18,7 @@ void hyp_interrupt_disable() {
 }
 
 static irqreturn_t timestamp_handler(int irq, void* dev_id) {
-	
+	printf("INTERRUPT!!!!\r\n", );
 }
 
 

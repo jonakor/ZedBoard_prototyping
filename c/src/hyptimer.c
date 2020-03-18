@@ -1,14 +1,17 @@
 /* INCLUDES */
 #include <sys/types.h>
-//??#include <sys/stat.h>
+#include <sys/stat.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/mman.h>
 
-#include "hyptimer.h"
+#include "../libs/hyptimer.h"
 
 /* DEFINES */
-#define TIMER_BASE_ADDRESS
-#define TIMER_CONTROLREG_OFFSET
-#define TIMER_DATAREG_OFFSET
+#define TIMER_BASE_ADDRESS 0x42800000
+//#define TIMER_CONTROLREG_OFFSET
+//#define TIMER_DATAREG_OFFSET
 
 #define TIMER_HYPSO_SETTING 0x0
 #define TIMER_HYPSO_ENABLE_MASK 0x80
@@ -16,33 +19,45 @@
 #define TIMER_HYPSO_LOAD_MASK 0x20
 #define TIMER_HYPSO_LOAD_VALUE 0x0
 
-static int fd = open("/dev/mem", O_RDWR|O_SYNC);
-static u32 *timerPtr = mmap(0, 3, PROT_READ|PROT_WRITE, MAP_SHARED, fd, TIMER_BASE_ADDRESS);
+static int fd;
+static unsigned int *timerPtr;
 
 /* FUNCTIONS */
 void hyp_timer_setup() {
+	printf("Timer setup...\r\n");
+
+	printf("\r\nTrying to access memory...\r\n");
+	fd = open("/../../dev/mem", O_RDWR|O_SYNC);
+	printf("Access grantet.\r\n");
+	printf("Mapping memory...\r\n");
+	//timerPtr = mmap(0, 12, PROT_READ|PROT_WRITE, MAP_SHARED, fd, TIMER_BASE_ADDRESS);
+	printf("Mapping complete.\r\n");
+
+	printf("\r\nConfiguring timer...\r\n");
 	timerPtr[0] = TIMER_HYPSO_SETTING;
+	printf("Timer configured. Loading timer...\r\n");
 	timerPtr[1] = TIMER_HYPSO_LOAD_VALUE;
+	printf("\r\nTimer setup complete!!\r\n");
 }
 
 void hyp_timer_start() {
-	u32 temp = timerPtr[0];
+	unsigned int temp = timerPtr[0];
 	timerPtr[0] = temp | TIMER_HYPSO_LOAD_MASK;
 	timerPtr[0] = temp | TIMER_HYPSO_ENABLE_MASK;
 }
 
 void hyp_timer_stop() {
-	u32 temp = timerPtr[0];
+	unsigned int temp = timerPtr[0];
 	timerPtr[0] = temp & TIMER_HYPSO_DISABLE_MASK;
 }
 
 void hyp_timer_reset() {
-	u32 temp = timerPtr[0];
+	unsigned int temp = timerPtr[0];
 	timerPtr[0] = temp | TIMER_HYPSO_LOAD_MASK;
 	timerPtr[0] = temp;
 }
 
-u32 hyp_timer_getTime() {
+unsigned int hyp_timer_getTime() {
 	return timerPtr[2];
 }
 
