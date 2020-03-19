@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 
 #include "../libs/hyptimer.h"
@@ -37,7 +38,7 @@ void hyp_timer_setup()
 	}
 	printf("Access grantet. fd:\t%d\r\n", fd);
 	printf("Mapping memory...\r\n");
-	timerPtr = mmap(NULL, 3*sizeof(unsigned int), PROT_READ|PROT_WRITE, MAP_SHARED, fd, TIMER_BASE_ADDRESS);
+	timerPtr = mmap(NULL, getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, fd, TIMER_BASE_ADDRESS);
 	if (timerPtr == MAP_FAILED)
 	{
 		perror("Couldn't map memory");
