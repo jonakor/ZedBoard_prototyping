@@ -12,8 +12,15 @@ int main()
 
 	printf("\r\nTimer start\r\n");
 	hyp_timer_start();
-	for (int i = 0; i < 1000000000; ++i){ }
+	for (int i = 0; i < 500000000; ++i){ }
 
+	ticks = hyp_timer_getTime();
+	printf("Before timer reset. Ticks: %d\r\n", ticks);
+	hyp_timer_reset();
+	ticks = hyp_timer_getTime();
+	printf("After timer reset. Ticks: %d\r\n", ticks);
+	
+	for (int i = 0; i < 500000000; ++i){ }
 	ticks = hyp_timer_getTime();
 	hyp_timer_stop();
 	printf("Timer stop. Ticks: %d \r\n", ticks);
