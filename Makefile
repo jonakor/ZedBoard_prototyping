@@ -1,10 +1,11 @@
-NAME	:= timertest
+PWD := $(shell pwd)
+CROSS := /home/hypso/Desktop/toolchain/bin/arm-linux-gnueabihf-
+KERNEL := /home/hypso/Desktop/linux-4.19
 
+obj-m += timestamp_module.o
+timestamp_module-objs := c/timestamp_module.o c/src/hyptimer.o
 
 all:
-	@ echo "Building application with source files"
-	arm-linux-gnueabihf-gcc -Wall c/timertest.c c/src/hyptimer.c -o $(NAME)
-	@ echo "Build complete"
-
+	make ARCH=arm CROSS_COMPILE=$(CROSS) -C $(KERNEL) SUBDIRS=$(PWD) modules
 clean:
-	rm -fr ./$(NAME)
+	make -C $(KERNEL) SUBDIRS=$(PWD) clean
