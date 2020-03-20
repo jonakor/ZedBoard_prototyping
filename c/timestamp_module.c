@@ -38,7 +38,7 @@ static irq_handler_t  timestamp_irq_handler(unsigned int irq, void *dev_id, stru
 static int __init ebbgpio_init(void){
   int result = 0;
 
-  printk(KERN_INFO "Initializing timestamp LKM\n");
+  printk(KERN_INFO "Initializing timestamp module\n");
 
   timerPtr = ioremap(TIMER_BASE_ADDRESS, 12);
   hyp_timer_setup(timerPtr);
@@ -94,7 +94,7 @@ static void __exit ebbgpio_exit(void){
   gpio_free(FLASH_SIGNAL_PIN);                                // Free the GPIO
 
 
-  printk(KERN_INFO "GPIO_TEST: Goodbye from the LKM!\n");
+  printk(KERN_INFO "Timestamp module exiting!\n");
 }
 
 /** @brief The GPIO IRQ Handler function
