@@ -46,7 +46,7 @@ void hyp_timer_reset(unsigned int *timerPtr)
 {
 	unsigned int temp = timerPtr[0];
 	timerPtr[0] = temp | TIMER_HYPSO_LOAD_MASK;
-	timerPtr[0] = temp | TIMER_HYPSO_ENABLE_MASK;
+	timerPtr[0] = temp;
 }
 
 unsigned int hyp_timer_getTime(unsigned int *timerPtr)
