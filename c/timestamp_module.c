@@ -5,7 +5,6 @@
 #include <linux/gpio.h>                 // Required for the GPIO functions
 #include <linux/interrupt.h>            // Required for the IRQ code
 #include <linux/io.h>
-//#include <stdio.h>       		// This is not a kernal module????
 
 #include "libs/hyptimer.h"
 
@@ -13,13 +12,13 @@
 #define PPS_SIGNAL_PIN 956    //MIO pin 50 on ZedBoard. Mapped to 906 + mio_pin = 956
 #define FLASH_SIGNAL_PIN 957  //MIO pin 51 on ZedBoard. Mapped to 906 + mio_pin = 957
 
-#define INTERRUPT_TRIGGER (IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING)
+#define INTERRUPT_TRIGGER (IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING) //Make interrupts trigger on both edges
 
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jon & Simen");
 MODULE_DESCRIPTION("Module handling interrupts to timestamp edges of pulse");
-MODULE_VERSION("1");
+MODULE_VERSION("1.1");
 
 static unsigned int irqNumberPPS;
 static unsigned int irqNumberFLASH;
@@ -84,7 +83,7 @@ static int __init ebbgpio_init(void){
  *  GPIOs and display cleanup messages.
  */
 static void __exit ebbgpio_exit(void){
-
+  hyp_timer_stop(timerPtr);
   iounmap(timerPtr);
   gpio_unexport(PPS_SIGNAL_PIN);                              // Unexport the GPIO
   gpio_unexport(FLASH_SIGNAL_PIN);                            // Unexport the GPIO
