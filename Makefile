@@ -7,5 +7,7 @@ timestamp_module-objs := c/timestamp_module.o c/src/hyptimer.o
 
 all:
 	make ARCH=arm CROSS_COMPILE=$(CROSS) -C $(KERNEL) SUBDIRS=$(PWD) modules
+	arm-linux-gnueabihf-gcc -o read_mem c/read_mem.c
 clean:
 	make -C $(KERNEL) SUBDIRS=$(PWD) clean
+	rm -r read_mem
