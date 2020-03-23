@@ -5,6 +5,7 @@
 #include <linux/gpio.h>                 // Required for the GPIO functions
 #include <linux/interrupt.h>            // Required for the IRQ code
 #include <linux/io.h>
+#include <linux/slab.h>                 // Required for memory allocation
 
 #include "libs/hyptimer.h"
 
@@ -13,6 +14,11 @@
 #define FLASH_SIGNAL_PIN 957  //MIO pin 51 on ZedBoard. Mapped to 906 + mio_pin = 957
 
 #define INTERRUPT_TRIGGER (IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING) //Make interrupts trigger on both edges
+
+#define N_FRAME_MAX 2300
+#define TIMESTAMP_ARRAY_SIZE (N_FRAME_MAX * 2 * 4) // Two timestamps per frame, four bytes per timestamp.
+
+#define microsSinceUTC( nPPS, ticks) ((nPPS*1000000) + (ticks/AXI_TICKS_PER_MICROS))
 
 
 MODULE_LICENSE("GPL");
@@ -23,6 +29,8 @@ MODULE_VERSION("1.1");
 static unsigned int irqNumberPPS;
 static unsigned int irqNumberFLASH;
 static unsigned int *timerPtr;
+static unsigned int *tstampArrayPtr;
+
 
 //Interrupt handler. Automatically runs this function on interrupt
 static irq_handler_t  timestamp_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs);
@@ -34,24 +42,28 @@ static irq_handler_t  timestamp_irq_handler(unsigned int irq, void *dev_id, stru
  *  function sets up the GPIOs and the IRQ
  *  @return returns 0 if successful
  */
-static int __init ebbgpio_init(void){
+static int __init timestamp_init(void){
   int result = 0;
 
   printk(KERN_INFO "Initializing timestamp module\n");
 
+  // Map pointer to physical address of timer
   timerPtr = ioremap(TIMER_BASE_ADDRESS, 12);
   hyp_timer_setup(timerPtr);
   hyp_timer_start(timerPtr);
 
+  // Allocate timestamp array
+  tstampArrayPtr = kzalloc(TIMESTAMP_ARRAY_SIZE, GFP_KERNEL);
+
   //-----------------GPIO SETUP------------------------//
-  //PPS
+  // PPS
   gpio_request(PPS_SIGNAL_PIN, "sysfs");                      // Set up the gpio
   gpio_direction_input(PPS_SIGNAL_PIN);                       // Set the button GPIO to be an input
   gpio_set_debounce(PPS_SIGNAL_PIN, 200);                     // Debounce the button with a delay of 200ms
   gpio_export(PPS_SIGNAL_PIN, false);                         // Causes gpiopin to appear in /sys/class/gpio
   irqNumberPPS = gpio_to_irq(PPS_SIGNAL_PIN);                 // GPIO numbers and IRQ numbers are not the same! This function performs the mapping for us
 
-  //FLASH
+  // FLASH
   gpio_request(FLASH_SIGNAL_PIN, "sysfs");                    // Set up the gpio
   gpio_direction_input(FLASH_SIGNAL_PIN);                     // Set the button GPIO to be an input
   gpio_set_debounce(FLASH_SIGNAL_PIN, 200);                   // Debounce the button with a delay of 200ms
@@ -82,7 +94,14 @@ static int __init ebbgpio_init(void){
  *  code is used for a built-in driver (not a LKM) that this function is not required. Used to release the
  *  GPIOs and display cleanup messages.
  */
-static void __exit ebbgpio_exit(void){
+static void __exit timestamp_exit(void){
+  
+  printk("%8u\t%8u\n", tstampArrayPtr[0], tstampArrayPtr[1]);
+  printk("%8u\t%8u\n", tstampArrayPtr[2], tstampArrayPtr[3]);
+  printk("%8u\t%8u\n", tstampArrayPtr[4000], tstampArrayPtr[4001]);
+
+
+  kfree(tstampArrayPtr);
   hyp_timer_stop(timerPtr);
   iounmap(timerPtr);
   gpio_unexport(PPS_SIGNAL_PIN);                              // Unexport the GPIO
@@ -107,12 +126,11 @@ static void __exit ebbgpio_exit(void){
  *  return returns IRQ_HANDLED if successful -- should return IRQ_NONE otherwise.
  */
 static irq_handler_t timestamp_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs){
-  u32 ticks;
-  u32 micros;
-  u32 microsSinceUTC;
+  unsigned int ticks;
 
-  static u32 ppsCount = 0;
-  static u32 frameCount = 0;
+  static unsigned int ppsCount = 0;
+  static unsigned int frameCount = 0;
+  static unsigned int prevFrameCount = 0;
 
   static bool prevPpsSignal = 0;
   static bool prevFlashSignal = 0;
@@ -132,38 +150,37 @@ static irq_handler_t timestamp_irq_handler(unsigned int irq, void *dev_id, struc
     if (ppsSignal != prevPpsSignal) {
        if (ppsSignal == 1){
           hyp_timer_reset(timerPtr);
-          ticks = hyp_timer_getTime(timerPtr);
           ppsCount ++;
           printk("\nInterrupt!: Rising edge of PPS. PPS-count: %u\n", ppsCount);
-          printk("Timer reset. Ticks: %u\n", ticks);
        }
 
        else if (ppsSignal == 0) {
           printk("\nInterrupt!: Falling edge of PPS.\n");
-       }
+          if ( (frameCount == prevFrameCount) && (frameCount != 0) ) {
+            frameCount = 0;
+            ppsCount = 0;
 
+          }
+          prevFrameCount = frameCount;
+       }
     }
 
-  //GET TIME
+  //Get ticks since the last PPS
   ticks = hyp_timer_getTime(timerPtr);
-  micros = ticks/AXI_TICKS_PER_MICROS;
-  microsSinceUTC = (ppsCount*1000000) + micros;
 
   //Flash signal
   if (flashSignal != prevFlashSignal) {
-    if (flashSignal == 1){
-      frameCount++;
+    if (flashSignal == 1) {
+      tstampArrayPtr[frameCount*2] = microsSinceUTC(ppsCount, ticks);
       printk("\nInterrupt!: Rising edge of FLASH.\n");
-      printk("Frame %4u starts\tUTC-startstamp + %9u us (microseconds)\n", frameCount, microsSinceUTC);
-
-
+      printk("Frame %4u starts\tUTC-startstamp + %9u us (microseconds)\n", frameCount, microsSinceUTC(ppsCount, ticks));      
     }
 
     else if (flashSignal == 0) {
-      microsSinceUTC = (ppsCount*1000000) + micros;
+      tstampArrayPtr[frameCount*2 + 1] = microsSinceUTC(ppsCount, ticks);
       printk("\nInterrupt!: Falling edge of FLASH.\n");
-      printk("Frame %4u ends  \tUTC-startstamp + %9u us (microseconds)\n", frameCount, microsSinceUTC);
-
+      printk("Frame %4u ends  \tUTC-startstamp + %9u us (microseconds)\n", frameCount, microsSinceUTC(ppsCount, ticks));
+      frameCount++;
     }
   }
 
@@ -177,5 +194,5 @@ return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handl
 
 /// This next calls are  mandatory -- they identify the initialization function
 /// and the cleanup function (as above).
-module_init(ebbgpio_init);
-module_exit(ebbgpio_exit);
+module_init(timestamp_init);
+module_exit(timestamp_exit);

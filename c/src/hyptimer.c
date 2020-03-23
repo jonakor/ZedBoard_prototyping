@@ -13,11 +13,11 @@
 #include "../libs/hyptimer.h"
 
 /* DEFINES */
-#define TIMER_HYPSO_SETTING 0x0000  // Base setting on timer control register
-#define TIMER_HYPSO_ENABLE_MASK 0x0080
-#define TIMER_HYPSO_DISABLE_MASK 0xFF7F
-#define TIMER_HYPSO_LOAD_MASK 0x0020
-#define TIMER_HYPSO_LOAD_VALUE 0x0000
+#define TIMER_HYPSO_SETTING 0x0000		// Base setting on timer control register
+#define TIMER_HYPSO_ENABLE_MASK 0x0080	// (OR) Mask to set timer enale bit
+#define TIMER_HYPSO_DISABLE_MASK 0xFF7F	// (AND) Mask to reset timer enable bit
+#define TIMER_HYPSO_LOAD_MASK 0x0020	// (OR) Mask to set timer load bit
+#define TIMER_HYPSO_LOAD_VALUE 0x0000	// Value to be loaded when load bit is set
 
 /* FUNCTIONS */
 void hyp_timer_setup(unsigned int *timerPtr) {

@@ -15,14 +15,14 @@
 
 /* FUNCTIONS */
 
-extern void hyp_timer_setup(unsigned int *timerPtr);
+void hyp_timer_setup(unsigned int *timerPtr);
 
-extern void hyp_timer_start(unsigned int *timerPtr);
+void hyp_timer_start(unsigned int *timerPtr);
 
-extern void hyp_timer_stop(unsigned int *timerPtr);
+void hyp_timer_stop(unsigned int *timerPtr);
 
-extern void hyp_timer_reset(unsigned int *timerPtr);
+void hyp_timer_reset(unsigned int *timerPtr);
 
-extern unsigned int hyp_timer_getTime(unsigned int *timerPtr);
+unsigned int hyp_timer_getTime(unsigned int *timerPtr);
 
 #endif  // HYPTIMER_H
