@@ -252,11 +252,8 @@ static void timestamp_gpio_close(void) {
 
 // Custom file operations
 static ssize_t tstamp_read(struct file *filp, char __user *buff, size_t count, loff_t *offp) {
-  ssize_t bytesUnread;
-  printk("Trying to read %6u bytes from driver.", count);
-  bytesUnread = copy_to_user(buff, tstampArrayPtr, count);
-  printk("Read %6u bytes from driver.", count - bytesUnread);
-  return bytesUnread;
+  printk("Trying to read %6u bytes from driver...", count);
+  return copy_to_user(buff, tstampArrayPtr, count);
 }
 static int tstamp_open(struct inode *inode, struct file *filp) {
   printk("Timestamp driver open!");
