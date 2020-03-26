@@ -6,9 +6,9 @@
 //#include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/kernel.h>
-#include <linux/module.h>
+//#include <linux/module.h>
 //#include <linux/io.h>
-#include <uapi/linux/unistd.h>
+//#include <uapi/linux/unistd.h>
 
 #include "../libs/hyptimer.h"
 

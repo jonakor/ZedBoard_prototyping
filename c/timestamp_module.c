@@ -12,27 +12,24 @@
 
 #include "libs/hyptimer.h"
 
-//REMEMBER TO REMOVE DEBOUNCE WHEN NECESSARY
-#define PPS_SIGNAL_PIN 956    //MIO pin 50 on ZedBoard. Mapped to 906 + mio_pin = 956
-#define FLASH_SIGNAL_PIN 957  //MIO pin 51 on ZedBoard. Mapped to 906 + mio_pin = 957
+// GPIO //REMEMBER TO REMOVE DEBOUNCE WHEN NECESSARY!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#define PPS_MIO_PIN 50
+#define FLASH_MIO_PIN 51
+#define GPIO_MIO_OFFSET 906
+#define PPS_GPIO_PIN (GPIO_MIO_OFFSET + PPS_MIO_PIN)    //MIO pin 50 on ZedBoard. Mapped to 906 + mio_pin = 956
+#define FLASH_GPIO_PIN (GPIO_MIO_OFFSET + FLASH_MIO_PIN)  //MIO pin 51 on ZedBoard. Mapped to 906 + mio_pin = 957
+static int timestamp_gpio_setup(void); // GPIO and interrupt setup function
+static void timestamp_gpio_close(void); // GPIO and interrupt close function
 
-#define INTERRUPT_TRIGGER (IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING) //Make interrupts trigger on both edges
 
+// Timestamping
 #define N_FRAME_MAX 2300
 #define TIMESTAMP_ARRAY_SIZE (N_FRAME_MAX * 2 * 4) // Two timestamps per frame, four bytes per timestamp.
-
-#define microsSinceUTC( nPPS, ticks) ((nPPS*1000000) + (ticks/AXI_TICKS_PER_MICROS))
-
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Jon & Simen");
-MODULE_DESCRIPTION("Module handling interrupts to timestamp edges of pulse");
-MODULE_VERSION("2");
-
-static unsigned int irqNumberPPS;
-static unsigned int irqNumberFLASH;
-static unsigned int *timerPtr;
+#define microsSinceUTC( nPPS, ticks) ((nPPS*1000000) + (ticks/AXI_TICKS_PER_MICROS)) // Custom macro for combining PPScount and timer ticks
 static unsigned int *tstampArrayPtr;
+
+// AXI Timer
+static unsigned int *timerPtr; // Pointer to timer address
 
 // Custom device driver
 static struct cdev custom_dev;
@@ -41,20 +38,16 @@ static dev_t device_number;
 static int tstamp_open(struct inode *inode, struct file *filp);
 static ssize_t tstamp_read(struct file *filp, char __user *buff, size_t count, loff_t *offp);
 static struct class *cl;
+static void *dev_id;
 
-//Interrupt handler. Automatically runs this function on interrupt
-static irq_handler_t  timestamp_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs);
+//Interrupt
+#define INTERRUPT_TRIGGER (IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING) //Make interrupts trigger on both edges
+static irq_handler_t  timestamp_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs); // Interrupt handler.
+static unsigned int irqNumberPPS; // Mapped IRQ number
+static unsigned int irqNumberFLASH; // Mapped IRQ number
 
-static int timestamp_gpio_setup(void); // GPIO and interrupt setup function
-static void timestamp_gpio_close(void); // GPIO and interrupt close function
 
-/** @brief The LKM initialization function
- *  The static keyword restricts the visibility of the function to within this C file. The __init
- *  macro means that for a built-in driver (not a LKM) the function is only used at initialization
- *  time and that it can be discarded and its memory freed up after that point. In this example this
- *  function sets up the GPIOs and the IRQ
- *  @return returns 0 if successful
- */
+// Initialization of module
 static int __init timestamp_init(void){
   int result = 0;
 
@@ -92,19 +85,12 @@ static int __init timestamp_init(void){
   hyp_timer_start(timerPtr);
 
   // Allocate timestamp array
-  tstampArrayPtr = kzalloc(TIMESTAMP_ARRAY_SIZE, GFP_KERNEL);
-
-  
+  tstampArrayPtr = kzalloc(TIMESTAMP_ARRAY_SIZE, GFP_KERNEL);  
 
   printk("Timestamp module loaded.");
   return 0;
 }
 
-/** The LKM cleanup function
- *  Similar to the initialization function, it is static. The __exit macro notifies that if this
- *  code is used for a built-in driver (not a LKM) that this function is not required. Used to release the
- *  GPIOs and display cleanup messages.
- */
 static void __exit timestamp_exit(void) {
   kfree(tstampArrayPtr);
   hyp_timer_stop(timerPtr);
@@ -144,8 +130,8 @@ static irq_handler_t timestamp_irq_handler(unsigned int irq, void *dev_id, struc
   static bool prevPpsSignal = 0;
   static bool prevFlashSignal = 0;
 
-  bool ppsSignal  = gpio_get_value(PPS_SIGNAL_PIN);
-  bool flashSignal = gpio_get_value(FLASH_SIGNAL_PIN);
+  bool ppsSignal  = gpio_get_value(PPS_GPIO_PIN);
+  bool flashSignal = gpio_get_value(FLASH_GPIO_PIN);
   // if (InitFlag) {
   //    prevPpsSignal = 0;
   //    prevFlashSignal = 0;
@@ -204,50 +190,50 @@ return (irq_handler_t) IRQ_HANDLED;      // Announce that the IRQ has been handl
 static int timestamp_gpio_setup(void) {
   int result;
   //    PPS     //
-  result = gpio_request(PPS_SIGNAL_PIN, "PPS"); // Set up the gpio
+  result = gpio_request(PPS_GPIO_PIN, "PPS"); // Set up the gpio
   if (result < 0) return result;
 
-  result = gpio_direction_input(PPS_SIGNAL_PIN);  // Set the button GPIO to be an input
+  result = gpio_direction_input(PPS_GPIO_PIN);  // Set the button GPIO to be an input
   if (result < 0) return result;
-  gpio_set_debounce(PPS_SIGNAL_PIN, 200); // Debounce the button with a delay of 200ms
-  gpio_export(PPS_SIGNAL_PIN, false); // Causes gpiopin to appear in /sys/class/gpio
+  gpio_set_debounce(PPS_GPIO_PIN, 200); // Debounce the button with a delay of 200ms
+  //gpio_export(PPS_GPIO_PIN, false); // Causes gpiopin to appear in /sys/class/gpio
   
-  irqNumberPPS = gpio_to_irq(PPS_SIGNAL_PIN); // GPIO numbers and IRQ numbers are not the same! This function performs the mapping for us
+  irqNumberPPS = gpio_to_irq(PPS_GPIO_PIN); // GPIO numbers and IRQ numbers are not the same! This function performs the mapping for us
   if (irqNumberPPS < 0) return irqNumberPPS;
   // This next call requests an interrupt line
   result = request_irq(irqNumberPPS,  // The interrupt number requested
               (irq_handler_t) timestamp_irq_handler,  // The pointer to the handler function below
               INTERRUPT_TRIGGER,  // Interrupt on rising edge (button press, not release)
               "PPS interrupt",  // Used in /proc/interrupts to identify the owner
-              NULL);  // The *dev_id for shared interrupt lines, NULL is okay
+              dev_id);  // The *dev_id for shared interrupt lines, NULL is okay
 
   //    FLASH     //
-  result = gpio_request(FLASH_SIGNAL_PIN, "FLASH"); // Set up the gpio
+  result = gpio_request(FLASH_GPIO_PIN, "FLASH"); // Set up the gpio
   if (result < 0) return result;
 
-  result = gpio_direction_input(FLASH_SIGNAL_PIN);  // Set the button GPIO to be an input
+  result = gpio_direction_input(FLASH_GPIO_PIN);  // Set the button GPIO to be an input
   if (result < 0) return result;
-  gpio_set_debounce(FLASH_SIGNAL_PIN, 200); // Debounce the button with a delay of 200ms
-  gpio_export(FLASH_SIGNAL_PIN, false); // Causes gpiopin to appear in /sys/class/gpio
+  gpio_set_debounce(FLASH_GPIO_PIN, 200); // Debounce the button with a delay of 200ms
+  //gpio_export(FLASH_GPIO_PIN, false); // Causes gpiopin to appear in /sys/class/gpio
   
-  irqNumberFLASH = gpio_to_irq(FLASH_SIGNAL_PIN); // GPIO numbers and IRQ numbers are not the same! This function performs the mapping for us
+  irqNumberFLASH = gpio_to_irq(FLASH_GPIO_PIN); // GPIO numbers and IRQ numbers are not the same! This function performs the mapping for us
   if (irqNumberFLASH < 0) return irqNumberFLASH;
   // This next call requests an interrupt line
   result = request_irq(irqNumberFLASH,  // The interrupt number requested
               (irq_handler_t) timestamp_irq_handler,  // The pointer to the handler function below
               INTERRUPT_TRIGGER,  // Interrupt on rising edge (button press, not release)
               "FLASH interrupt",  // Used in /proc/interrupts to identify the owner
-              NULL);  // The *dev_id for shared interrupt lines, NULL is okay
+              dev_id);  // The *dev_id for shared interrupt lines, NULL is okay
   return 0;
 } 
 // Gpio close
 static void timestamp_gpio_close(void) {
-  gpio_unexport(PPS_SIGNAL_PIN);                              // Unexport the GPIO
-  gpio_unexport(FLASH_SIGNAL_PIN);                            // Unexport the GPIO
-  free_irq(irqNumberPPS, NULL);                               // Free the IRQ number, no *dev_id required in this case
-  free_irq(irqNumberFLASH, NULL);                             // Free the IRQ number, no *dev_id required in this case
-  gpio_free(PPS_SIGNAL_PIN);                                  // Free the GPIO
-  gpio_free(FLASH_SIGNAL_PIN);                                // Free the GPIO
+  //gpio_unexport(PPS_GPIO_PIN);    // Unexport the GPIO
+  //gpio_unexport(FLASH_GPIO_PIN);  // Unexport the GPIO
+  free_irq(irqNumberPPS, dev_id);   // Free the IRQ number, no *dev_id required in this case
+  free_irq(irqNumberFLASH, dev_id); // Free the IRQ number, no *dev_id required in this case
+  gpio_free(PPS_GPIO_PIN);      // Free the GPIO
+  gpio_free(FLASH_GPIO_PIN);    // Free the GPIO
 }
 
 // Custom file operations
@@ -263,5 +249,10 @@ static int tstamp_open(struct inode *inode, struct file *filp) {
 
 /// This next calls are  mandatory -- they identify the initialization function
 /// and the cleanup function (as above).
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Jon & Simen");
+MODULE_DESCRIPTION("Module handling interrupts to timestamp edges of pulse");
+MODULE_VERSION("2");
+
 module_init(timestamp_init);
 module_exit(timestamp_exit);

@@ -2,9 +2,9 @@
 #define HYPTIMER_H
 
 /* INCLUDES */
-#include <linux/init.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
+// #include <linux/init.h>
+// #include <linux/kernel.h>
+// #include <linux/module.h>
 /* DEFINES */
 #define TIMER_BASE_ADDRESS 0x42800000
 
