@@ -6,7 +6,7 @@
 //#include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/kernel.h>
-//#include <linux/module.h>
+#include <linux/module.h>
 //#include <linux/io.h>
 //#include <uapi/linux/unistd.h>
 
@@ -59,4 +59,4 @@ void hyp_timer_reset(unsigned int *timerPtr) {
 
 unsigned int hyp_timer_getTime(unsigned int *timerPtr) { return timerPtr[2]; }
 
-/*STATIC FUNCTIONS*/
+MODULE_LICENSE("GPL");
