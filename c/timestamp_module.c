@@ -60,7 +60,7 @@ static int __init timestamp_init(void){
 
   //Initialize Driver By Getting Device Number
   if (alloc_chrdev_region(&device_number, 0, 1, device_name) != 0) {
-    printk("Can't Allocate Device Number\n");
+    printk("KERN_ERR Can't Allocate Device Number\n");
     return -1;
   }
   //Initialize Custom Device
@@ -78,7 +78,7 @@ static int __init timestamp_init(void){
   // Map physical address of timer to pointer
   timerPtr = ioremap(TIMER_BASE_ADDRESS, 12);
   if (timerPtr == NULL) {
-    printk("Couldn't map physical adress %x", TIMER_BASE_ADDRESS);
+    printk(KERN_ERR "Couldn't map physical adress %x", TIMER_BASE_ADDRESS);
     return -1;
   }
   hyp_timer_setup(timerPtr);
@@ -87,7 +87,7 @@ static int __init timestamp_init(void){
   // Allocate timestamp array
   tstampArrayPtr = kzalloc(TIMESTAMP_ARRAY_SIZE, GFP_KERNEL);  
 
-  printk("Timestamp module loaded.");
+  printk(KERN_INFO "Timestamp module loaded.");
   return 0;
 }
 
@@ -107,7 +107,7 @@ static void __exit timestamp_exit(void) {
   unregister_chrdev_region(device_number, 1);
 
 
-  printk("Timestamp module unloaded.\n");
+  printk(KERN_INFO "Timestamp module unloaded.\n");
 }
 
 /** @brief The GPIO IRQ Handler function
