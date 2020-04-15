@@ -1,5 +1,6 @@
 PWD := $(shell pwd)
-CROSS := /home/hypso/Desktop/toolchain/bin/arm-linux-gnueabihf-
+#CROSS := /home/hypso/Desktop/gcc-linaro-7.3.1-2018.05-i686_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+CROSS := /bin/arm-linux-gnueabihf-
 KERNEL := /home/hypso/Desktop/linux-4.19
 
 obj-m := timestamp_module.o
