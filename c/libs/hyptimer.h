@@ -1,10 +1,6 @@
 #ifndef HYPTIMER_H
 #define HYPTIMER_H
 
-/* INCLUDES */
-// #include <linux/init.h>
-// #include <linux/kernel.h>
-// #include <linux/module.h>
 /* DEFINES */
 #define TIMER_BASE_ADDRESS 0x42800000
 
@@ -15,14 +11,14 @@
 
 /* FUNCTIONS */
 
-void hyp_timer_setup(unsigned int *timerPtr);
+void hyp_timer_setup(volatile unsigned int *timerPtr);
 
-void hyp_timer_start(unsigned int *timerPtr);
+void hyp_timer_start(volatile unsigned int *timerPtr);
 
-void hyp_timer_stop(unsigned int *timerPtr);
+void hyp_timer_stop(volatile unsigned int *timerPtr);
 
-void hyp_timer_reset(unsigned int *timerPtr);
+void hyp_timer_reset(volatile unsigned int *timerPtr);
 
-unsigned int hyp_timer_getTime(unsigned int *timerPtr);
+unsigned int hyp_timer_getTime(volatile unsigned int *timerPtr);
 
-#endif  // HYPTIMER_H
+#endif // HYPTIMER_H
