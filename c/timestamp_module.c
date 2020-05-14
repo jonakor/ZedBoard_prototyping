@@ -132,7 +132,7 @@ static irq_handler_t timestamp_irq_handler(unsigned int irq, void *dev_id, struc
     if (ppsSignal != prevPpsSignal) {
         if (ppsSignal == 1) {
             hyp_timer_reset(timerPtr);
-            if (frameCount > 0) ppsCount++; 
+            ppsCount++; 
             // printk(KERN_DEBUG "\nInterrupt!: Rising edge of PPS. PPS-count: %u\n", ppsCount);
         } else if (ppsSignal == 0) {
             // printk(KERN_DEBUG "\nInterrupt!: Falling edge of PPS.\n");
